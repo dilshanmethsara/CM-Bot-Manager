@@ -1,0 +1,72 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Session {
+  id                    String       @id @default(uuid())
+  name                  String
+  phoneNumber           String
+  status                String       @default("disconnected")
+  profileName           String?
+  avatarUrl             String?
+  connectedAt           DateTime?
+  lastActivity          DateTime?
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+  credentialsEncrypted  String?
+  keysEncrypted         String?
+  encryptionKeyVersion  Int          @default(1)
+  browser               Json?
+  logs                  SessionLog[]
+  messages              Message[]
+}
+
+model SessionLog {
+  id        String   @id @default(uuid())
+  sessionId String?
+  level     String
+  message   String
+  metadata  String?
+  createdAt DateTime @default(now())
+
+  session Session? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}
+
+model Setting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model Message {
+  id        String    @id @default(uuid())
+  sessionId String
+  to        String
+  type      String
+  content   String
+  status    String    @default("queued")
+  error     String?
+  createdAt DateTime  @default(now())
+  sentAt    DateTime?
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([createdAt])
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String?
+  role      String   @default("admin")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
