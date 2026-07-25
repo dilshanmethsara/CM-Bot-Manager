@@ -24,6 +24,19 @@ dist-ssr
 .nitro
 *.local
 
+# Reference / junk
+working-bailyes-botmanager-main/
+botmanager.pem
+bun.lock
+bunfig.toml
+implementation_plan.md
+sessions/
+uploads/*
+!uploads/.gitkeep
+
+# IDE
+.lovable/
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
