@@ -100,8 +100,8 @@ function makePython(method: string, path: string, auth?: boolean, body?: string)
   const url = makeUrl(path);
   let code = `import requests\n`;
   if (auth) code += `headers = {'Authorization': 'Bearer <token>'}\n`;
-  if (body) code += `r = requests.${method.lower()}('${url}', json=${body}`;
-  else code += `r = requests.${method.lower()}('${url}'`;
+  if (body) code += `r = requests.${method.toLowerCase()}('${url}', json=${body}`;
+  else code += `r = requests.${method.toLowerCase()}('${url}'`;
   if (auth) code += `, headers=headers`;
   code += `)\nprint(r.json())`;
   return code;

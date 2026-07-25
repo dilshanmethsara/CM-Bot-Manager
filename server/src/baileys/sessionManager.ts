@@ -13,6 +13,9 @@ import { formatForPairing } from '../utils/phone.js';
 import { serverIO } from '../socketServer.js';
 import { createSessionLog, logger } from '../logger.js';
 
+// Use global WebSocket for ready state checking
+const WebSocket = globalThis.WebSocket;
+
 const MAX_RECONNECT_ATTEMPTS = 5;
 const RECONNECT_BASE_DELAY_MS = 3000;
 
@@ -198,54 +201,86 @@ class SessionManager {
           logger.info({ sessionId }, 'Skipping pairing code — session already registered');
           await createSessionLog(sessionId, 'INFO', 'Already registered, skipping pairing code');
         } else {
-          // Wait for WebSocket to establish, then request pairing code
-          setTimeout(async () => {
-            try {
-              // Double-check: still not registered (creds may have updated by now)
-              if (authState.creds?.registered) {
-                logger.info({ sessionId }, 'creds already registered, skipping pairing request');
-                return;
-              }
-              const phoneDigits = formatForPairing(session.phoneNumber);
-              logger.info({ sessionId, phone: phoneDigits }, 'Requesting pairing code');
-              const code = await socket.requestPairingCode(phoneDigits);
-              const formatted = typeof code === 'string'
-                ? code.match(/.{1,4}/g)?.join('-') ?? code
-                : String(code);
-              this.pairingCodes.set(sessionId, formatted);
-              await this.updateStatus(sessionId, 'pairing');
-              serverIO?.emit('pairingCodeGenerated', { sessionId, pairingCode: formatted });
-              await createSessionLog(sessionId, 'INFO', `Pairing code generated: ${formatted}`);
-              logger.info({ sessionId, code: formatted }, 'Pairing code ready');
-            } catch (err) {
-              await createSessionLog(sessionId, 'ERROR', `Pairing request failed: ${err}`);
-              logger.error({ sessionId, err }, 'Pairing code request failed');
+          // Wait for WebSocket to establish (connection becomes 'connecting' or 'open'), then request pairing code
+          let pairingRequested = false;
+          
+          const checkAndRequestPairing = async () => {
+            if (pairingRequested) return;
+            
+            // Double-check: still not registered (creds may have updated)
+            if (authState.creds?.registered) {
+              logger.info({ sessionId }, 'creds already registered, skipping pairing request');
+              return;
             }
-          }, 3000);
+            
+            // Only request if socket is connected (not closed)
+            // socket.ws is internal but we can check readyState
+            const ws = socket.ws as any; // WebSocketClient has readyState property
+            if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+              pairingRequested = true;
+              try {
+                const phoneDigits = formatForPairing(session.phoneNumber);
+                logger.info({ sessionId, phone: phoneDigits, wsState: ws.readyState }, 'Requesting pairing code');
+                await createSessionLog(sessionId, 'INFO', `Requesting pairing code for ${phoneDigits}`);
+                const code = await socket.requestPairingCode(phoneDigits);
+                const formatted = typeof code === 'string'
+                  ? code.match(/.{1,4}/g)?.join('-') ?? code
+                  : String(code);
+                this.pairingCodes.set(sessionId, formatted);
+                await this.updateStatus(sessionId, 'pairing');
+                serverIO?.emit('pairingCodeGenerated', { sessionId, pairingCode: formatted });
+                await createSessionLog(sessionId, 'INFO', `Pairing code generated: ${formatted}`);
+                logger.info({ sessionId, code: formatted, wsState: ws.readyState }, 'Pairing code ready');
+              } catch (err) {
+                pairingRequested = false; // Allow retry
+                await createSessionLog(sessionId, 'ERROR', `Pairing request failed: ${err}`);
+                logger.error({ sessionId, err, wsState: ws?.readyState }, 'Pairing request failed');
+              }
+            } else {
+              // Socket not ready yet, check again in 1 second
+              logger.debug({ sessionId, wsState: ws?.readyState }, 'Socket not ready for pairing, retrying...');
+              setTimeout(checkAndRequestPairing, 1000);
+            }
+          };
+          
+          // Start checking after a short delay
+          setTimeout(checkAndRequestPairing, 1500);
         }
       }
 
       // ─── Connection Events ────────────────────────────────────────────────
       socket.ev.on('connection.update', async (update: Partial<ConnectionState>) => {
-        const { connection, lastDisconnect, qr } = update;
+        const { connection, lastDisconnect, qr, isNewLogin, receivedPendingNotifications } = update;
+        
+        logger.info({ 
+          sessionId, 
+          connection, 
+          isNewLogin, 
+          receivedPendingNotifications,
+          lastDisconnectError: lastDisconnect?.error?.message,
+          lastDisconnectStatusCode: (lastDisconnect?.error as Boom)?.output?.statusCode,
+          lastDisconnectReason: (lastDisconnect?.error as Boom)?.output?.statusCode ? 
+            (DisconnectReason[(lastDisconnect?.error as Boom)?.output?.statusCode!] || `code_${(lastDisconnect?.error as Boom)?.output?.statusCode}`) : 'none',
+        }, 'connection.update event');
+        
+        await createSessionLog(sessionId, 'INFO', `connection.update: ${connection ?? 'no-change'}`);
 
         if (qr) {
           this.qrCodes.set(sessionId, qr);
           await this.updateStatus(sessionId, 'qr');
-          serverIO?.emit('qrGenerated', { sessionId, qrCode: qr });
+          serverIO?.emit('qrCodeGenerated', { sessionId, qrCode: qr });
           await createSessionLog(sessionId, 'INFO', 'QR code generated');
-          logger.debug({ sessionId }, 'QR generated');
+          logger.info({ sessionId, qrLength: qr.length }, 'QR code ready');
         }
 
         if (connection === 'connecting') {
-          logger.info({ sessionId, receivedPendingNotifications: update.receivedPendingNotifications }, 'connection.update: connecting');
+          logger.info({ sessionId, receivedPendingNotifications }, 'connection.update: connecting');
           baileysSession.connectingGuard = false;
           await this.updateStatus(sessionId, 'connecting');
         }
 
-
         if (connection === 'open') {
-          logger.info({ sessionId, receivedPendingNotifications: update.receivedPendingNotifications }, 'connection.update: open — WhatsApp linked!');
+          logger.info({ sessionId, isNewLogin, receivedPendingNotifications }, 'connection.update: open — WhatsApp linked!');
           this.qrCodes.delete(sessionId);
           this.pairingCodes.delete(sessionId);
           baileysSession.reconnectAttempts = 0;
@@ -301,8 +336,22 @@ class SessionManager {
           const statusCode = err?.output?.statusCode;
           const isLoggedOut = statusCode === DisconnectReason.loggedOut;
           const reasonText = statusCode ? (DisconnectReason[statusCode] || `code_${statusCode}`) : 'unknown';
-
-          logger.info({ sessionId, statusCode, reason: reasonText, isLoggedOut }, 'connection.update: close');
+          
+          // Detailed disconnect logging
+          logger.warn({
+            sessionId,
+            statusCode,
+            reason: reasonText,
+            isLoggedOut,
+            errorMessage: err?.message,
+            errorStack: err?.stack,
+            errorOutput: err?.output,
+            lastDisconnect: lastDisconnect ? {
+              error: lastDisconnect.error,
+              date: lastDisconnect.date
+            } : undefined
+          }, 'connection.update: close — DETAILED');
+          
           await createSessionLog(sessionId, 'WARN', `Disconnected: ${reasonText} (${statusCode ?? 'unknown'})`);
 
           if (isLoggedOut) {
