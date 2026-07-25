@@ -12,16 +12,7 @@ import { useRateLimits, useApiKeys } from "@/hooks/use-rate-limits";
 import { useSessions } from "@/hooks/use-sessions";
 import { systemApi } from "@/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
-
-export const Route = createFileRoute("/api-manager")({
-  head: () => ({
-    meta: [
-      { title: "API Manager — Cloud Mint" },
-      { name: "description", content: "Manage API keys, endpoints, webhooks, and rate limits." },
-    ],
-  }),
-  component: ApiManager,
-});
+import { getApiBaseUrl } from "@/lib/config";
 
 const apiEndpoints = [
   { method: "POST",   path: "/api/v1/messages/text",     desc: "Send a text message",    rpm: 240 },
@@ -43,7 +34,26 @@ const methodColors: Record<string, string> = {
   DELETE: "bg-destructive/15 text-destructive border-destructive/25",
 };
 
-const codeSample = `curl -X POST http://localhost:3000/api/v1/messages/text \\\n  -H "Content-Type: application/json" \\\n  -H "Authorization: Bearer cm_<your-api-key>" \\\n  -d '{\n    "sessionId": "your-session-id",\n    "to": "+15550103421",\n    "content": "Hello from Cloud Mint 👋"\n  }'`;
+const baseUrl = getApiBaseUrl() || 'http://localhost:3000';
+
+const codeSample = `curl -X POST ${baseUrl}/api/v1/messages/text \\\\
+  -H "Content-Type: application/json" \\\\
+  -H "Authorization: Bearer cm_<your-api-key>" \\\\
+  -d '{
+    "sessionId": "your-session-id",
+    "to": "+15550103421",
+    "content": "Hello from Cloud Mint 👋"
+  }'`;
+
+export const Route = createFileRoute("/api-manager")({
+  head: () => ({
+    meta: [
+      { title: "API Manager — Cloud Mint" },
+      { name: "description", content: "Manage API keys, endpoints, webhooks, and rate limits." },
+    ],
+  }),
+  component: ApiManager,
+});
 
 function ApiManager() {
   const [keyName, setKeyName] = useState("");

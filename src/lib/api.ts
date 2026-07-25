@@ -3,9 +3,9 @@
  * All requests go to /api/v1/* — Vite proxies them to localhost:3000 in dev.
  */
 
-const BASE = '/api/v1'
+import { getApiBaseUrl } from './config';
 
-// ─── Generic fetch wrapper ────────────────────────────────────────────────────
+const BASE = getApiBaseUrl() + '/api/v1'
 
 async function request<T>(
   method: string,
