@@ -31,6 +31,7 @@ import {
 } from "@/hooks/use-sessions";
 import { getSocket, SOCKET_EVENTS } from "@/lib/socket";
 import type { SessionInfo } from "@/lib/api";
+import { copyToClipboard } from "@/lib/utils";
 
 export const Route = createFileRoute("/sessions")({
   head: () => ({
@@ -223,7 +224,7 @@ function SessionsPage() {
                             <Pencil className="mr-2 h-4 w-4" /> Rename
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => { navigator.clipboard.writeText(s.id); toast.success("Session ID copied"); }}>
+                          <DropdownMenuItem onClick={() => { copyToClipboard(s.id); toast.success("Session ID copied"); }}>
                             <Copy className="mr-2 h-4 w-4" /> Copy ID
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
@@ -404,7 +405,7 @@ function CreateSessionDialog({ open, onOpenChange }: { open: boolean; onOpenChan
                     <p className="mt-2 text-xs text-muted-foreground">Enter this code in WhatsApp › Linked Devices › Link with phone number</p>
                     <Button
                       variant="outline" size="sm" className="mt-3 rounded-lg"
-                      onClick={() => { navigator.clipboard.writeText(pairingCode); toast.success("Copied"); }}
+                                            onClick={() => { copyToClipboard(pairingCode); toast.success("Copied"); }}
                     >
                       <Copy className="mr-1.5 h-3 w-3" /> Copy code
                     </Button>
@@ -519,7 +520,7 @@ function ReconnectDialog({ session, onClose }: { session: SessionInfo | null; on
             </p>
             <div className="flex items-center justify-center gap-2 rounded-xl bg-muted p-4">
               <code className="select-all text-2xl font-bold tracking-widest">{pairingCode}</code>
-              <Button size="icon" variant="ghost" className="shrink-0" onClick={() => { navigator.clipboard.writeText(pairingCode!); toast.success('Copied'); }}>
+                            <Button size="icon" variant="ghost" className="shrink-0" onClick={() => { copyToClipboard(pairingCode!); toast.success('Copied'); }}>
                 <Copy className="h-4 w-4" />
               </Button>
             </div>

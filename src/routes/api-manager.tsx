@@ -13,6 +13,7 @@ import { useSessions } from "@/hooks/use-sessions";
 import { systemApi } from "@/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
 import { getApiBaseUrl } from "@/lib/config";
+import { copyToClipboard } from "@/lib/utils";
 
 const apiEndpoints = [
   { method: "POST",   path: "/api/v1/messages/text",     desc: "Send a text message",    rpm: 240 },
@@ -54,23 +55,6 @@ export const Route = createFileRoute("/api-manager")({
   }),
   component: ApiManager,
 });
-
-function copyToClipboard(text: string) {
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(text);
-  } else {
-    // Fallback for HTTP (navigator.clipboard undefined)
-    const ta = document.createElement('textarea');
-    ta.value = text;
-    ta.style.position = 'fixed';
-    ta.style.opacity = '0';
-    document.body.appendChild(ta);
-    ta.select();
-    try { document.execCommand('copy'); } catch { /* noop */ }
-    document.body.removeChild(ta);
-  }
-  toast.success('Copied');
-}
 
 function ApiManager() {
   const [keyName, setKeyName] = useState("");

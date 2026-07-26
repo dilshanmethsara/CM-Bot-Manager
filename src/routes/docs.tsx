@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState, useCallback } from "react";
 import { Copy, Check, ChevronRight, Search, Menu, X, Play, Loader2, Globe, Lock, Terminal, BookOpen, Server, MessageSquare, Activity, Key, Webhook, HelpCircle, Wrench } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/config";
+import { copyToClipboard } from "@/lib/utils";
 
 export const Route = createFileRoute("/docs")({
   head: () => ({
@@ -436,7 +437,7 @@ const realWorldExamples = [
 function CodeBlock({ code }: { code: string }) {
   const [copied, setCopied] = useState(false);
   const copy = useCallback(() => {
-    navigator.clipboard.writeText(code);
+    copyToClipboard(code);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   }, [code]);
