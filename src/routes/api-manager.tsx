@@ -55,6 +55,23 @@ export const Route = createFileRoute("/api-manager")({
   component: ApiManager,
 });
 
+function copyToClipboard(text: string) {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text);
+  } else {
+    // Fallback for HTTP (navigator.clipboard undefined)
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); } catch { /* noop */ }
+    document.body.removeChild(ta);
+  }
+  toast.success('Copied');
+}
+
 function ApiManager() {
   const [keyName, setKeyName] = useState("");
   const [selectedSessionId, setSelectedSessionId] = useState("");
@@ -229,7 +246,7 @@ function ApiManager() {
                   <p className="font-mono text-xs text-muted-foreground">
                     {k.key.slice(0, 16)}…
                     <Button variant="ghost" size="sm" className="ml-1 h-auto p-0 text-xs text-accent hover:bg-transparent hover:underline"
-                      onClick={() => { navigator.clipboard.writeText(k.key); toast.success("Copied"); }}>
+                                            onClick={() => { copyToClipboard(k.key); }}>
                       <Copy className="mr-0.5 inline h-3 w-3" /> copy
                     </Button>
                   </p>
@@ -247,7 +264,7 @@ function ApiManager() {
       <Card className="glass rounded-2xl p-5">
         <div className="mb-3 flex items-center justify-between">
           <h3 className="font-semibold">Example request</h3>
-          <Button variant="ghost" size="sm" onClick={() => { navigator.clipboard.writeText(codeSample); toast.success("Copied"); }}>
+          <Button variant="ghost" size="sm"           <Button variant="ghost" size="sm" onClick={() => { copyToClipboard(codeSample); }}>
             <Copy className="mr-1.5 h-3.5 w-3.5" /> Copy
           </Button>
         </div>
