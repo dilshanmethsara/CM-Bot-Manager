@@ -213,14 +213,14 @@ class SessionManager {
               return;
             }
             
-            // Only request if socket is connected (not closed)
-            // socket.ws is internal but we can check readyState
-            const ws = socket.ws as any; // WebSocketClient has readyState property
-            if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+          // Only request if socket is connected (not closed)
+            // socket.ws is WebSocketClient – uses isOpen/isConnecting getters, not readyState
+            const ws = socket.ws as any;
+            if (ws && (ws.isOpen || ws.isConnecting)) {
               pairingRequested = true;
               try {
                 const phoneDigits = formatForPairing(session.phoneNumber);
-                logger.info({ sessionId, phone: phoneDigits, wsState: ws.readyState }, 'Requesting pairing code');
+                logger.info({ sessionId, phone: phoneDigits, wsState: ws.isOpen ? 'open' : 'connecting' }, 'Requesting pairing code');
                 await createSessionLog(sessionId, 'INFO', `Requesting pairing code for ${phoneDigits}`);
                 const code = await socket.requestPairingCode(phoneDigits);
                 const formatted = typeof code === 'string'
@@ -230,15 +230,15 @@ class SessionManager {
                 await this.updateStatus(sessionId, 'pairing');
                 serverIO?.emit('pairingCodeGenerated', { sessionId, pairingCode: formatted });
                 await createSessionLog(sessionId, 'INFO', `Pairing code generated: ${formatted}`);
-                logger.info({ sessionId, code: formatted, wsState: ws.readyState }, 'Pairing code ready');
+                logger.info({ sessionId, code: formatted, wsOpen: ws.isOpen }, 'Pairing code ready');
               } catch (err) {
                 pairingRequested = false; // Allow retry
                 await createSessionLog(sessionId, 'ERROR', `Pairing request failed: ${err}`);
-                logger.error({ sessionId, err, wsState: ws?.readyState }, 'Pairing request failed');
+                logger.error({ sessionId, err, wsOpen: ws?.isOpen }, 'Pairing request failed');
               }
             } else {
               // Socket not ready yet, check again in 1 second
-              logger.debug({ sessionId, wsState: ws?.readyState }, 'Socket not ready for pairing, retrying...');
+              logger.debug({ sessionId, wsOpen: ws?.isOpen, wsConnecting: ws?.isConnecting }, 'Socket not ready for pairing, retrying...');
               setTimeout(checkAndRequestPairing, 1000);
             }
           };
