@@ -186,7 +186,7 @@ function SessionsPage() {
                         <div className="min-w-0">
                           <p className="truncate font-medium">{s.name}</p>
                           <p className="truncate text-[11px] text-muted-foreground">{s.profileName ?? "—"}</p>
-                          <p className="truncate font-mono text-[10px] text-muted-foreground/60" title={s.id}>{s.id.slice(0,12)}…</p>
+                          <p className="truncate font-mono text-[10px] text-muted-foreground/60 cursor-pointer hover:text-accent transition-colors" title={s.id} onClick={() => { copyToClipboard(s.id); toast.success("Session ID copied"); }}>{s.id.slice(0,12)}…</p>
                         </div>
                       </div>
                     </td>
