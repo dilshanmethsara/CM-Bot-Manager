@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc && mkdir -p dist/config dist/prisma && cp -r ../config dist/config && cp -r prisma dist/prisma",
+    "build": "tsc && mkdir -p dist/config dist/prisma && cp -r config dist/config && cp -r prisma dist/prisma",
     "start": "node dist/server.js",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
