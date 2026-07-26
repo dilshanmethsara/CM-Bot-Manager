@@ -264,7 +264,7 @@ function ApiManager() {
       <Card className="glass rounded-2xl p-5">
         <div className="mb-3 flex items-center justify-between">
           <h3 className="font-semibold">Example request</h3>
-          <Button variant="ghost" size="sm"           <Button variant="ghost" size="sm" onClick={() => { copyToClipboard(codeSample); }}>
+          <Button variant="ghost" size="sm" onClick={() => { copyToClipboard(codeSample); }}>
             <Copy className="mr-1.5 h-3.5 w-3.5" /> Copy
           </Button>
         </div>
