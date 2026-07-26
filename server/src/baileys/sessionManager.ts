@@ -389,13 +389,35 @@ class SessionManager {
         }
       });
 
-      // ─── Message Events (for future use) ─────────────────────────────────
+      // ─── Incoming Messages ────────────────────────────────────────────────
       socket.ev.on('messages.upsert', async (m) => {
         if (m.type === 'notify' || m.type === 'append') {
           for (const msg of m.messages) {
             if (msg.message) {
               await createSessionLog(sessionId, 'DEBUG', `Message: ${msg.key.id}`);
             }
+          }
+        }
+      });
+
+      // ─── Delivery Status Updates ───────────────────────────────────────────
+      // sendMessage resolves when queued locally, NOT when delivered.
+      // WhatsApp sends status updates (incl. errors) through this event.
+      socket.ev.on('messages.update', async (updates) => {
+        for (const u of updates) {
+          const status = u.status;
+          const msgId = u.key?.id;
+          if (!msgId) continue;
+
+          if (status === 'error') {
+            const errorCode = (u as any).messageStubType || (u as any).messageStubParameters?.[0] || 'unknown';
+            const errMsg = `Delivery failed for ${msgId}: error ${errorCode}`;
+            logger.error({ sessionId, msgId, errorCode, update: u }, errMsg);
+            await createSessionLog(sessionId, 'ERROR', errMsg);
+            serverIO?.emit('messageDeliveryFailed', { sessionId, msgId, error: errorCode });
+          } else if (status >= 2) {
+            // status 2 = delivered, 3 = read — useful telemetry
+            logger.debug({ sessionId, msgId, status }, `Message ${msgId} status update: ${status}`);
           }
         }
       });

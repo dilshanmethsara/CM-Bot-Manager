@@ -24,13 +24,14 @@ export function disconnectSocket(): void {
 
 // ─── Typed event names ────────────────────────────────────────────────────────
 export const SOCKET_EVENTS = {
-  SESSION_CREATED:      'sessionCreated',
-  SESSION_DELETED:      'sessionDeleted',
-  SESSION_CONNECTED:    'sessionConnected',
-  SESSION_DISCONNECTED: 'sessionDisconnected',
-  SESSION_UPDATED:      'sessionUpdated',
-  QR_GENERATED:         'qrGenerated',
-  PAIRING_CODE:         'pairingCodeGenerated',
-  CONNECTION_ERROR:     'connectionError',
-  MESSAGE_SENT:         'messageSent',
+  SESSION_CREATED:             'sessionCreated',
+  SESSION_DELETED:             'sessionDeleted',
+  SESSION_CONNECTED:           'sessionConnected',
+  SESSION_DISCONNECTED:        'sessionDisconnected',
+  SESSION_UPDATED:             'sessionUpdated',
+  QR_GENERATED:                'qrGenerated',
+  PAIRING_CODE:                'pairingCodeGenerated',
+  CONNECTION_ERROR:            'connectionError',
+  MESSAGE_SENT:                'messageSent',
+  MESSAGE_DELIVERY_FAILED:     'messageDeliveryFailed',
 } as const

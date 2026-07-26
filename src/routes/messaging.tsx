@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import {
   Send, Image as ImageIcon, FileText, Mic, Radio, Clock,
@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { useSessions } from "@/hooks/use-sessions";
 import { useSendText, useSendImage, useSendDocument, useMessageHistory } from "@/hooks/use-messages";
+import { getSocket, SOCKET_EVENTS } from "@/lib/socket";
 
 export const Route = createFileRoute("/messaging")({
   head: () => ({
@@ -35,6 +36,19 @@ const tabs = [
 ];
 
 function Messaging() {
+  useEffect(() => {
+    const s = getSocket();
+    if (!s.connected) s.connect();
+
+    function onDeliveryFailed({ sessionId, msgId, error }: { sessionId: string; msgId: string; error: unknown }) {
+      toast.error(`Delivery failed: ${error}`, { description: `Session: ${sessionId} · Message: ${msgId.slice(0, 8)}…` });
+      console.error('[Delivery failed]', { sessionId, msgId, error });
+    }
+
+    s.on(SOCKET_EVENTS.MESSAGE_DELIVERY_FAILED, onDeliveryFailed);
+    return () => { s.off(SOCKET_EVENTS.MESSAGE_DELIVERY_FAILED, onDeliveryFailed); };
+  }, []);
+
   return (
     <div className="space-y-6">
       <PageHeader title="Messaging" description="Compose and dispatch messages across your sessions." />
